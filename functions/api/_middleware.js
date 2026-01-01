@@ -1,5 +1,5 @@
-// Cloudflare Worker - Backend API
-// This handles all database operations
+// Cloudflare Pages Functions Middleware
+// This handles all API requests
 
 import { createClient } from '@libsql/client/web';
 
@@ -10,60 +10,55 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
-export default {
-  async fetch(request, env) {
-    // Handle CORS preflight
-    if (request.method === 'OPTIONS') {
-      return new Response(null, { headers: corsHeaders });
+async function handleRequest(request, env) {
+  // Handle CORS preflight
+  if (request.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  // Initialize Turso client
+  const db = createClient({
+    url: env.TURSO_DATABASE_URL,
+    authToken: env.TURSO_AUTH_TOKEN,
+  });
+
+  // Initialize database table
+  await initializeDatabase(db);
+
+  const url = new URL(request.url);
+  const path = url.pathname;
+
+  try {
+    // Route requests
+    if (path === '/api/tasks' && request.method === 'GET') {
+      return await getTasks(db);
+    }
+    
+    if (path === '/api/tasks' && request.method === 'POST') {
+      return await createTask(db, request);
+    }
+    
+    if (path.startsWith('/api/tasks/') && request.method === 'PUT') {
+      const id = path.split('/')[3];
+      return await updateTask(db, request, id);
+    }
+    
+    if (path.startsWith('/api/tasks/') && request.method === 'DELETE') {
+      const id = path.split('/')[3];
+      return await deleteTask(db, id);
     }
 
-    // Initialize Turso client
-    const db = createClient({
-      url: env.TURSO_DATABASE_URL,
-      authToken: env.TURSO_AUTH_TOKEN,
+    // If no route matches, return null to pass through
+    return null;
+
+  } catch (error) {
+    console.error('Error:', error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
-
-    // Initialize database table
-    await initializeDatabase(db);
-
-    const url = new URL(request.url);
-    const path = url.pathname;
-
-    try {
-      // Route requests
-      if (path === '/api/tasks' && request.method === 'GET') {
-        return await getTasks(db);
-      }
-      
-      if (path === '/api/tasks' && request.method === 'POST') {
-        return await createTask(db, request);
-      }
-      
-      if (path.startsWith('/api/tasks/') && request.method === 'PUT') {
-        const id = path.split('/')[3];
-        return await updateTask(db, request, id);
-      }
-      
-      if (path.startsWith('/api/tasks/') && request.method === 'DELETE') {
-        const id = path.split('/')[3];
-        return await deleteTask(db, id);
-      }
-
-      // If no route matches, return 404
-      return new Response('Not Found', { 
-        status: 404,
-        headers: corsHeaders 
-      });
-
-    } catch (error) {
-      console.error('Error:', error);
-      return new Response(JSON.stringify({ error: error.message }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-  },
-};
+  }
+}
 
 // Initialize database table
 async function initializeDatabase(db) {
@@ -141,4 +136,9 @@ async function deleteTask(db, id) {
   return new Response(JSON.stringify({ success: true }), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
+}
+
+// Export the handler
+export async function onRequest(context) {
+  return await handleRequest(context.request, context.env);
 }
