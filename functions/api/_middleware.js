@@ -1,5 +1,5 @@
-// Cloudflare Pages Functions - Turso Database API
-// This handles all API requests using Turso's HTTP API
+// Cloudflare Pages Functions - JW Schedule Meetings API
+// This handles all database operations using Turso's HTTP API
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -42,25 +42,50 @@ async function executeSQL(sql, args, env) {
   return result.results[0].response;
 }
 
-// Initialize database
+// Initialize database tables
 async function initializeDatabase(env) {
-  const createTableSQL = `
-    CREATE TABLE IF NOT EXISTS tasks (
+  // Members table
+  await executeSQL(`
+    CREATE TABLE IF NOT EXISTS members (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      title TEXT NOT NULL,
-      description TEXT,
-      status TEXT DEFAULT 'pending',
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      name TEXT NOT NULL,
+      gender TEXT NOT NULL,
+      roles TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
-  `;
+  `, [], env);
   
-  await executeSQL(createTableSQL, [], env);
+  // Meetings table
+  await executeSQL(`
+    CREATE TABLE IF NOT EXISTS meetings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      date TEXT NOT NULL,
+      type TEXT NOT NULL,
+      theme TEXT,
+      notes TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `, [], env);
+  
+  // Assignments table
+  await executeSQL(`
+    CREATE TABLE IF NOT EXISTS assignments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      meeting_id INTEGER NOT NULL,
+      member_id INTEGER NOT NULL,
+      part TEXT NOT NULL,
+      details TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (meeting_id) REFERENCES meetings(id),
+      FOREIGN KEY (member_id) REFERENCES members(id)
+    )
+  `, [], env);
 }
 
-// Get all tasks
-async function getTasks(env) {
-  const result = await executeSQL('SELECT * FROM tasks ORDER BY created_at DESC', [], env);
+// ============= MEMBERS =============
+
+async function getMembers(env) {
+  const result = await executeSQL('SELECT * FROM members ORDER BY name ASC', [], env);
   const rows = result.result.rows.map(row => {
     const obj = {};
     result.result.cols.forEach((col, i) => {
@@ -74,20 +99,19 @@ async function getTasks(env) {
   });
 }
 
-// Create new task
-async function createTask(request, env) {
-  const { title, description, status } = await request.json();
+async function createMember(request, env) {
+  const { name, gender, roles } = await request.json();
   
-  if (!title) {
-    return new Response(JSON.stringify({ error: 'Title is required' }), {
+  if (!name || !gender) {
+    return new Response(JSON.stringify({ error: 'Name and gender are required' }), {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 
   await executeSQL(
-    'INSERT INTO tasks (title, description, status) VALUES (?, ?, ?)',
-    [title, description || '', status || 'pending'],
+    'INSERT INTO members (name, gender, roles) VALUES (?, ?, ?)',
+    [name, gender, roles || '[]'],
     env
   );
 
@@ -97,20 +121,19 @@ async function createTask(request, env) {
   });
 }
 
-// Update task
-async function updateTask(request, id, env) {
-  const { title, description, status } = await request.json();
+async function updateMember(request, id, env) {
+  const { name, gender, roles } = await request.json();
   
-  if (!title) {
-    return new Response(JSON.stringify({ error: 'Title is required' }), {
+  if (!name || !gender) {
+    return new Response(JSON.stringify({ error: 'Name and gender are required' }), {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 
   await executeSQL(
-    'UPDATE tasks SET title = ?, description = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-    [title, description || '', status || 'pending', id],
+    'UPDATE members SET name = ?, gender = ?, roles = ? WHERE id = ?',
+    [name, gender, roles || '[]', id],
     env
   );
 
@@ -119,16 +142,114 @@ async function updateTask(request, id, env) {
   });
 }
 
-// Delete task
-async function deleteTask(id, env) {
-  await executeSQL('DELETE FROM tasks WHERE id = ?', [id], env);
+async function deleteMember(id, env) {
+  // Also delete all assignments for this member
+  await executeSQL('DELETE FROM assignments WHERE member_id = ?', [id], env);
+  await executeSQL('DELETE FROM members WHERE id = ?', [id], env);
 
   return new Response(JSON.stringify({ success: true }), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 }
 
-// Main request handler
+// ============= MEETINGS =============
+
+async function getMeetings(env) {
+  const result = await executeSQL('SELECT * FROM meetings ORDER BY date DESC', [], env);
+  const rows = result.result.rows.map(row => {
+    const obj = {};
+    result.result.cols.forEach((col, i) => {
+      obj[col.name] = row[i].value;
+    });
+    return obj;
+  });
+  
+  return new Response(JSON.stringify(rows), {
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
+async function createMeeting(request, env) {
+  const { date, type, theme, notes } = await request.json();
+  
+  if (!date || !type) {
+    return new Response(JSON.stringify({ error: 'Date and type are required' }), {
+      status: 400,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
+  await executeSQL(
+    'INSERT INTO meetings (date, type, theme, notes) VALUES (?, ?, ?, ?)',
+    [date, type, theme || '', notes || ''],
+    env
+  );
+
+  return new Response(JSON.stringify({ success: true }), {
+    status: 201,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
+async function deleteMeeting(id, env) {
+  // Also delete all assignments for this meeting
+  await executeSQL('DELETE FROM assignments WHERE meeting_id = ?', [id], env);
+  await executeSQL('DELETE FROM meetings WHERE id = ?', [id], env);
+
+  return new Response(JSON.stringify({ success: true }), {
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
+// ============= ASSIGNMENTS =============
+
+async function getAssignments(env) {
+  const result = await executeSQL('SELECT * FROM assignments ORDER BY created_at DESC', [], env);
+  const rows = result.result.rows.map(row => {
+    const obj = {};
+    result.result.cols.forEach((col, i) => {
+      obj[col.name] = row[i].value;
+    });
+    return obj;
+  });
+  
+  return new Response(JSON.stringify(rows), {
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
+async function createAssignment(request, env) {
+  const { meeting_id, member_id, part, details } = await request.json();
+  
+  if (!meeting_id || !member_id || !part) {
+    return new Response(JSON.stringify({ error: 'Meeting, member, and part are required' }), {
+      status: 400,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
+  await executeSQL(
+    'INSERT INTO assignments (meeting_id, member_id, part, details) VALUES (?, ?, ?, ?)',
+    [meeting_id, member_id, part, details || ''],
+    env
+  );
+
+  return new Response(JSON.stringify({ success: true }), {
+    status: 201,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
+async function deleteAssignment(id, env) {
+  await executeSQL('DELETE FROM assignments WHERE id = ?', [id], env);
+
+  return new Response(JSON.stringify({ success: true }), {
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
+// ============= MAIN HANDLER =============
+
 export async function onRequest(context) {
   const { request, env } = context;
   
@@ -144,23 +265,44 @@ export async function onRequest(context) {
     // Initialize database on first request
     await initializeDatabase(env);
 
-    // Route requests
-    if (path === '/api/tasks' && request.method === 'GET') {
-      return await getTasks(env);
+    // MEMBERS routes
+    if (path === '/api/members' && request.method === 'GET') {
+      return await getMembers(env);
     }
-    
-    if (path === '/api/tasks' && request.method === 'POST') {
-      return await createTask(request, env);
+    if (path === '/api/members' && request.method === 'POST') {
+      return await createMember(request, env);
     }
-    
-    if (path.startsWith('/api/tasks/') && request.method === 'PUT') {
+    if (path.match(/^\/api\/members\/\d+$/) && request.method === 'PUT') {
       const id = path.split('/')[3];
-      return await updateTask(request, id, env);
+      return await updateMember(request, id, env);
     }
-    
-    if (path.startsWith('/api/tasks/') && request.method === 'DELETE') {
+    if (path.match(/^\/api\/members\/\d+$/) && request.method === 'DELETE') {
       const id = path.split('/')[3];
-      return await deleteTask(id, env);
+      return await deleteMember(id, env);
+    }
+
+    // MEETINGS routes
+    if (path === '/api/meetings' && request.method === 'GET') {
+      return await getMeetings(env);
+    }
+    if (path === '/api/meetings' && request.method === 'POST') {
+      return await createMeeting(request, env);
+    }
+    if (path.match(/^\/api\/meetings\/\d+$/) && request.method === 'DELETE') {
+      const id = path.split('/')[3];
+      return await deleteMeeting(id, env);
+    }
+
+    // ASSIGNMENTS routes
+    if (path === '/api/assignments' && request.method === 'GET') {
+      return await getAssignments(env);
+    }
+    if (path === '/api/assignments' && request.method === 'POST') {
+      return await createAssignment(request, env);
+    }
+    if (path.match(/^\/api\/assignments\/\d+$/) && request.method === 'DELETE') {
+      const id = path.split('/')[3];
+      return await deleteAssignment(id, env);
     }
 
     // If no route matches, pass through
