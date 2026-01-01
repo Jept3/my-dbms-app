@@ -1,6 +1,9 @@
 name = "my-dbms-app"
 compatibility_date = "2024-01-01"
-pages_build_output_dir = "."
+compatibility_flags = ["nodejs_compat"]
+
+[build]
+command = "npm install"
 
 [env.production.vars]
 # These will be set via Cloudflare dashboard
