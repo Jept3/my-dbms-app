@@ -1,11 +1,2 @@
 name = "my-dbms-app"
 compatibility_date = "2024-01-01"
-compatibility_flags = ["nodejs_compat"]
-
-[build]
-command = "npm install"
-
-[env.production.vars]
-# These will be set via Cloudflare dashboard
-# TURSO_DATABASE_URL = "your-database-url"
-# TURSO_AUTH_TOKEN = "your-auth-token"
