@@ -1,654 +1,679 @@
-// JW Schedule Meetings - Frontend JavaScript
+// JW Schedule Meetings - Complete JavaScript
 const API_URL = '/api';
 
-// State management
-let members = [];
+// Global state
+let currentCycleId = null;
+let currentMeetingId = null;
+let currentCategory = null;
+let people = [];
+let cycles = [];
 let meetings = [];
-let assignments = [];
 
-// Initialize app
+// Initialize
 document.addEventListener('DOMContentLoaded', () => {
     setupNavigation();
-    loadAllData();
+    loadInitialData();
     setupEventListeners();
-    setDefaultReportMonth();
 });
 
 // Navigation
 function setupNavigation() {
-    const navLinks = document.querySelectorAll('.nav-link');
-    navLinks.forEach(link => {
+    document.querySelectorAll('.nav-link').forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
-            const pageName = link.dataset.page;
-            showPage(pageName);
-            
-            // Update active nav link
-            navLinks.forEach(l => l.classList.remove('active'));
+            const page = link.dataset.page;
+            showPage(page);
+            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
             link.classList.add('active');
         });
     });
 }
 
 function showPage(pageName) {
-    const pages = document.querySelectorAll('.page');
-    pages.forEach(page => page.classList.remove('active'));
-    
-    const targetPage = document.getElementById(`${pageName}-page`);
-    if (targetPage) {
-        targetPage.classList.add('active');
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    const page = document.getElementById(`${pageName}-page`);
+    if (page) {
+        page.classList.add('active');
+        
+        // Load data for specific pages
+        if (pageName === 'people') loadPeoplePage();
+        if (pageName === 'midweek') loadMidweekPage();
+        if (pageName === 'assignments') loadAssignmentsPage();
     }
 }
 
 // Event Listeners
 function setupEventListeners() {
-    // Member form
-    document.getElementById('addMemberForm').addEventListener('submit', handleAddMember);
-    document.getElementById('editMemberForm').addEventListener('submit', handleEditMember);
-    
-    // Meeting form
-    document.getElementById('addMeetingForm').addEventListener('submit', handleAddMeeting);
-    
-    // Assignment form
-    document.getElementById('addAssignmentForm').addEventListener('submit', handleAddAssignment);
-    
-    // Filters
-    document.getElementById('filterMeeting')?.addEventListener('change', filterAssignments);
-    document.getElementById('filterMember')?.addEventListener('change', filterAssignments);
+    document.getElementById('create-cycle-form')?.addEventListener('submit', handleCreateCycle);
+    document.getElementById('add-person-form')?.addEventListener('submit', handleAddPerson);
 }
 
-// Load all data
-async function loadAllData() {
+// Load initial data
+async function loadInitialData() {
     await Promise.all([
-        loadMembers(),
-        loadMeetings(),
-        loadAssignments()
+        loadPeople(),
+        loadCycles()
     ]);
-    
-    updateDashboard();
-    populateDropdowns();
+    loadMidweekPage();
 }
 
-// ============= MEMBERS =============
+// ============= PEOPLE =============
 
-async function loadMembers() {
+async function loadPeople() {
     try {
-        const response = await fetch(`${API_URL}/members`);
-        if (!response.ok) throw new Error('Failed to load members');
-        
-        members = await response.json();
-        displayMembers();
+        const response = await fetch(`${API_URL}/people`);
+        if (!response.ok) throw new Error('Failed to load people');
+        people = await response.json();
+        updatePeopleCounts();
     } catch (error) {
-        console.error('Error loading members:', error);
-        showError('members', 'Failed to load members');
+        console.error('Error:', error);
     }
 }
 
-function displayMembers() {
-    const container = document.getElementById('membersList');
+function updatePeopleCounts() {
+    const counts = {
+        elders: people.filter(p => p.category === 'elder').length,
+        ms: people.filter(p => p.category === 'ms').length,
+        publishers: people.filter(p => p.category === 'publisher').length,
+        'student-brothers': people.filter(p => p.category === 'student-brother').length,
+        'student-sisters': people.filter(p => p.category === 'student-sister').length,
+        attendants: people.filter(p => p.category === 'attendant').length
+    };
     
-    if (members.length === 0) {
-        container.innerHTML = '<div class="empty-state">No members added yet. Add your first member above!</div>';
+    Object.keys(counts).forEach(key => {
+        const el = document.getElementById(`count-${key}`);
+        if (el) el.textContent = counts[key];
+    });
+}
+
+function loadPeoplePage() {
+    updatePeopleCounts();
+}
+
+function showPeopleCategory(category) {
+    currentCategory = category;
+    const categoryNames = {
+        'elders': 'Congregation Elders',
+        'ms': 'Ministerial Servants',
+        'publishers': 'Publishers',
+        'student-brothers': 'Student Brothers',
+        'student-sisters': 'Student Sisters',
+        'attendants': 'Attendant Brothers'
+    };
+    
+    const categoryMap = {
+        'elders': 'elder',
+        'ms': 'ms',
+        'publishers': 'publisher',
+        'student-brothers': 'student-brother',
+        'student-sisters': 'student-sister',
+        'attendants': 'attendant'
+    };
+    
+    document.getElementById('category-title').textContent = categoryNames[category];
+    document.getElementById('category-detail').style.display = 'block';
+    
+    const filtered = people.filter(p => p.category === categoryMap[category]);
+    const container = document.getElementById('people-list');
+    
+    if (filtered.length === 0) {
+        container.innerHTML = '<div class="empty-state">No people in this category yet.</div>';
         return;
     }
     
-    container.innerHTML = members.map(member => {
-        const roles = member.roles ? JSON.parse(member.roles) : [];
-        return `
-            <div class="member-item">
-                <div class="member-header">
-                    <div>
-                        <div class="member-name">${escapeHtml(member.name)}</div>
-                        <span class="member-gender">${escapeHtml(member.gender)}</span>
-                    </div>
-                </div>
-                <div class="member-roles">
-                    ${roles.map(role => `<span class="role-badge">${escapeHtml(role)}</span>`).join('')}
-                </div>
-                <div class="member-actions">
-                    <button class="btn btn-edit" onclick="openEditMemberModal(${member.id})">Edit</button>
-                    <button class="btn btn-delete" onclick="deleteMember(${member.id})">Delete</button>
-                </div>
+    container.innerHTML = filtered.map(person => `
+        <div class="person-item">
+            <div class="item-header">
+                <div class="item-title">${h(person.full_name)}</div>
+                <span class="badge badge-primary">${h(person.category)}</span>
             </div>
-        `;
-    }).join('');
+            <div class="item-actions">
+                <button class="btn btn-danger" onclick="deletePerson(${person.id})">Delete</button>
+            </div>
+        </div>
+    `).join('');
 }
 
-async function handleAddMember(e) {
+function showAddPersonModal() {
+    document.getElementById('add-person-modal').style.display = 'block';
+}
+
+function closeAddPersonModal() {
+    document.getElementById('add-person-modal').style.display = 'none';
+    document.getElementById('add-person-form').reset();
+}
+
+async function handleAddPerson(e) {
     e.preventDefault();
-    
-    const name = document.getElementById('memberName').value;
-    const gender = document.getElementById('memberGender').value;
-    const roleCheckboxes = document.querySelectorAll('input[name="roles"]:checked');
-    const roles = Array.from(roleCheckboxes).map(cb => cb.value);
+    const name = document.getElementById('person-name').value;
+    const category = document.getElementById('person-category').value;
     
     try {
-        const response = await fetch(`${API_URL}/members`, {
+        const response = await fetch(`${API_URL}/people`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, gender, roles: JSON.stringify(roles) })
+            body: JSON.stringify({ full_name: name, category })
         });
         
-        if (!response.ok) throw new Error('Failed to add member');
+        if (!response.ok) throw new Error('Failed to add person');
         
-        showSuccess('Member added successfully!');
-        document.getElementById('addMemberForm').reset();
-        await loadAllData();
+        closeAddPersonModal();
+        await loadPeople();
+        if (currentCategory) showPeopleCategory(currentCategory);
+        showSuccess('Person added successfully!');
     } catch (error) {
-        console.error('Error adding member:', error);
-        showError('form', 'Failed to add member');
+        console.error('Error:', error);
+        alert('Failed to add person');
     }
 }
 
-function openEditMemberModal(id) {
-    const member = members.find(m => m.id === id);
-    if (!member) return;
+async function deletePerson(id) {
+    if (!confirm('Are you sure you want to delete this person?')) return;
     
-    document.getElementById('editMemberId').value = member.id;
-    document.getElementById('editMemberName').value = member.name;
-    document.getElementById('editMemberGender').value = member.gender;
+    try {
+        const response = await fetch(`${API_URL}/people/${id}`, { method: 'DELETE' });
+        if (!response.ok) throw new Error('Failed to delete person');
+        
+        await loadPeople();
+        if (currentCategory) showPeopleCategory(currentCategory);
+        showSuccess('Person deleted successfully!');
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to delete person');
+    }
+}
+
+// ============= CYCLES =============
+
+async function loadCycles() {
+    try {
+        const response = await fetch(`${API_URL}/cycles`);
+        if (!response.ok) throw new Error('Failed to load cycles');
+        cycles = await response.json();
+    } catch (error) {
+        console.error('Error:', error);
+    }
+}
+
+function loadMidweekPage() {
+    displayCycles();
+}
+
+function loadAssignmentsPage() {
+    displayCycles('assignments-cycles-list');
+}
+
+function displayCycles(containerId = 'cycles-list') {
+    const container = document.getElementById(containerId);
+    if (!container) return;
     
-    // Populate roles checkboxes
-    const roles = member.roles ? JSON.parse(member.roles) : [];
-    const rolesContainer = document.getElementById('editRolesContainer');
-    const allRoles = [
-        'Elder', 'MS', 'Bible Reading', 'Student Talk', 'Paragraph Reader',
-        'Bible Text Reader', 'Prayer Opening', 'Prayer Closing', 'Microphone Servant',
-        'Podium Servant', 'Gate Keeper', 'Audio Servant', 'Video Servant'
-    ];
+    if (cycles.length === 0) {
+        container.innerHTML = '<div class="empty-state">No cycles created yet. Create your first 3-month cycle above.</div>';
+        return;
+    }
     
-    rolesContainer.innerHTML = allRoles.map(role => `
-        <label class="checkbox-label">
-            <input type="checkbox" name="editRoles" value="${role}" ${roles.includes(role) ? 'checked' : ''}>
-            ${role}
-        </label>
+    container.innerHTML = cycles.map(cycle => `
+        <div class="cycle-item">
+            <div class="item-header">
+                <div class="item-title">${h(cycle.title)}</div>
+            </div>
+            <div class="item-meta">${h(cycle.start_date)} → ${h(cycle.end_date)}</div>
+            <div class="item-actions">
+                <button class="btn btn-primary" onclick="viewCycle(${cycle.id})">View Thursdays</button>
+                <button class="btn btn-danger" onclick="deleteCycle(${cycle.id})">Delete</button>
+            </div>
+        </div>
     `).join('');
-    
-    document.getElementById('editMemberModal').style.display = 'block';
 }
 
-function closeEditMemberModal() {
-    document.getElementById('editMemberModal').style.display = 'none';
-}
-
-async function handleEditMember(e) {
+async function handleCreateCycle(e) {
     e.preventDefault();
     
-    const id = document.getElementById('editMemberId').value;
-    const name = document.getElementById('editMemberName').value;
-    const gender = document.getElementById('editMemberGender').value;
-    const roleCheckboxes = document.querySelectorAll('input[name="editRoles"]:checked');
-    const roles = Array.from(roleCheckboxes).map(cb => cb.value);
+    const title = document.getElementById('cycle-title').value;
+    const startDate = document.getElementById('cycle-start').value;
+    const endDate = document.getElementById('cycle-end').value;
     
     try {
-        const response = await fetch(`${API_URL}/members/${id}`, {
-            method: 'PUT',
+        const response = await fetch(`${API_URL}/cycles`, {
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, gender, roles: JSON.stringify(roles) })
+            body: JSON.stringify({ title, start_date: startDate, end_date: endDate })
         });
         
-        if (!response.ok) throw new Error('Failed to update member');
+        if (!response.ok) throw new Error('Failed to create cycle');
         
-        closeEditMemberModal();
-        showSuccess('Member updated successfully!');
-        await loadAllData();
+        document.getElementById('create-cycle-form').reset();
+        await loadCycles();
+        displayCycles();
+        showSuccess('Cycle created successfully with all Thursdays!');
     } catch (error) {
-        console.error('Error updating member:', error);
-        showError('modal', 'Failed to update member');
+        console.error('Error:', error);
+        alert('Failed to create cycle');
     }
 }
 
-async function deleteMember(id) {
-    if (!confirm('Are you sure you want to delete this member?')) return;
+async function viewCycle(cycleId) {
+    currentCycleId = cycleId;
+    const cycle = cycles.find(c => c.id === cycleId);
+    if (!cycle) return;
     
+    document.getElementById('cycle-detail-title').textContent = cycle.title;
+    document.getElementById('cycle-detail-dates').textContent = `${cycle.start_date} → ${cycle.end_date}`;
+    
+    // Load meetings for this cycle
     try {
-        const response = await fetch(`${API_URL}/members/${id}`, {
-            method: 'DELETE'
-        });
-        
-        if (!response.ok) throw new Error('Failed to delete member');
-        
-        showSuccess('Member deleted successfully!');
-        await loadAllData();
-    } catch (error) {
-        console.error('Error deleting member:', error);
-        showError('list', 'Failed to delete member');
-    }
-}
-
-// ============= MEETINGS =============
-
-async function loadMeetings() {
-    try {
-        const response = await fetch(`${API_URL}/meetings`);
+        const response = await fetch(`${API_URL}/cycles/${cycleId}/meetings`);
         if (!response.ok) throw new Error('Failed to load meetings');
         
         meetings = await response.json();
-        displayMeetings();
+        displayThursdays();
+        showPage('view-cycle');
     } catch (error) {
-        console.error('Error loading meetings:', error);
-        showError('meetings', 'Failed to load meetings');
+        console.error('Error:', error);
+        alert('Failed to load meetings');
     }
 }
 
-function displayMeetings() {
-    const container = document.getElementById('meetingsList');
+function displayThursdays() {
+    const container = document.getElementById('thursdays-list');
     
     if (meetings.length === 0) {
-        container.innerHTML = '<div class="empty-state">No meetings scheduled yet. Create your first meeting above!</div>';
+        container.innerHTML = '<div class="empty-state">No meetings found.</div>';
         return;
     }
     
-    // Sort meetings by date (newest first)
-    const sortedMeetings = [...meetings].sort((a, b) => new Date(b.date) - new Date(a.date));
+    container.innerHTML = `<table>
+        <thead><tr><th>#</th><th>Date</th><th>Actions</th></tr></thead>
+        <tbody>${meetings.map(m => `
+            <tr>
+                <td>${m.sequence_no || '-'}</td>
+                <td><strong>${formatDate(m.meeting_date)}</strong></td>
+                <td><button class="btn btn-primary" onclick="editThursday(${m.id})">Assign Parts</button></td>
+            </tr>
+        `).join('')}</tbody>
+    </table>`;
+}
+
+async function deleteCycle(id) {
+    if (!confirm('Delete this cycle and all its meetings?')) return;
     
-    container.innerHTML = sortedMeetings.map(meeting => `
-        <div class="meeting-item">
-            <div class="meeting-date">${formatDate(meeting.date)}</div>
-            <span class="meeting-type">${escapeHtml(meeting.type)}</span>
-            ${meeting.theme ? `<div style="margin: 10px 0; font-weight: 600;">${escapeHtml(meeting.theme)}</div>` : ''}
-            ${meeting.notes ? `<div style="color: #666; font-size: 0.95rem;">${escapeHtml(meeting.notes)}</div>` : ''}
-            <div class="member-actions" style="margin-top: 15px;">
-                <button class="btn btn-delete" onclick="deleteMeeting(${meeting.id})">Delete Meeting</button>
+    try {
+        const response = await fetch(`${API_URL}/cycles/${id}`, { method: 'DELETE' });
+        if (!response.ok) throw new Error('Failed to delete cycle');
+        
+        await loadCycles();
+        displayCycles();
+        showSuccess('Cycle deleted successfully!');
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to delete cycle');
+    }
+}
+
+// ============= EDIT THURSDAY =============
+
+async function editThursday(meetingId) {
+    currentMeetingId = meetingId;
+    const meeting = meetings.find(m => m.id === meetingId);
+    if (!meeting) return;
+    
+    document.getElementById('thursday-title').textContent = 'Edit Thursday Meeting';
+    document.getElementById('thursday-date').textContent = formatDate(meeting.meeting_date);
+    
+    // Load meeting details
+    await loadMeetingDetails(meetingId);
+    
+    showPage('edit-thursday');
+}
+
+async function loadMeetingDetails(meetingId) {
+    try {
+        const response = await fetch(`${API_URL}/meetings/${meetingId}`);
+        if (!response.ok) throw new Error('Failed to load meeting details');
+        
+        const data = await response.json();
+        
+        // Populate form fields
+        document.getElementById('week-title').value = data.meeting.week_title || '';
+        document.getElementById('week-reading').value = data.meeting.week_reading || '';
+        document.getElementById('opening-song-no').value = data.meeting.opening_song_no || '';
+        document.getElementById('opening-song-title').value = data.meeting.opening_song_title || '';
+        document.getElementById('middle-song-no').value = data.meeting.middle_song_no || '';
+        document.getElementById('middle-song-title').value = data.meeting.middle_song_title || '';
+        document.getElementById('closing-song-no').value = data.meeting.closing_song_no || '';
+        document.getElementById('closing-song-title').value = data.meeting.closing_song_title || '';
+        
+        // Populate people dropdowns
+        populatePersonDropdowns();
+        
+        // Set assignments
+        setAssignmentValue('chairman-select', data.assignments.chairman);
+        setAssignmentValue('opening-prayer-select', data.assignments.opening_prayer);
+        setAssignmentValue('closing-prayer-select', data.assignments.closing_prayer);
+        setAssignmentValue('kg1-speaker', data.assignments.kayamanan);
+        setAssignmentValue('kg2-speaker', data.assignments.hiyas);
+        setAssignmentValue('kg3-reader', data.assignments.bible_reading);
+        setAssignmentValue('cbs-reader-phar', data.assignments.cbs_reader_phar);
+        setAssignmentValue('cbs-reader-bible', data.assignments.cbs_reader_bible);
+        
+        document.getElementById('kg1-title').value = data.assignments.kayamanan_title || '';
+        
+        // Load MM and PBK rows
+        displayMMRows(data.mm_rows || []);
+        displayPBKRows(data.pbk_rows || []);
+        
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to load meeting details');
+    }
+}
+
+function populatePersonDropdowns() {
+    const selects = [
+        'chairman-select', 'opening-prayer-select', 'closing-prayer-select',
+        'kg1-speaker', 'kg2-speaker', 'kg3-reader',
+        'cbs-reader-phar', 'cbs-reader-bible'
+    ];
+    
+    selects.forEach(id => {
+        const select = document.getElementById(id);
+        if (!select) return;
+        
+        const currentValue = select.value;
+        select.innerHTML = '<option value="">Select person...</option>' +
+            people.map(p => `<option value="${p.id}">${h(p.full_name)}</option>`).join('');
+        
+        if (currentValue) select.value = currentValue;
+    });
+}
+
+function setAssignmentValue(selectId, personId) {
+    const select = document.getElementById(selectId);
+    if (select && personId) {
+        select.value = personId;
+    }
+}
+
+async function saveWeekInfo() {
+    const data = {
+        week_title: document.getElementById('week-title').value,
+        week_reading: document.getElementById('week-reading').value
+    };
+    
+    await saveMeetingField(data);
+    showSuccess('Week info saved!');
+}
+
+async function saveSongs() {
+    const data = {
+        opening_song_no: document.getElementById('opening-song-no').value,
+        opening_song_title: document.getElementById('opening-song-title').value,
+        middle_song_no: document.getElementById('middle-song-no').value,
+        middle_song_title: document.getElementById('middle-song-title').value,
+        closing_song_no: document.getElementById('closing-song-no').value,
+        closing_song_title: document.getElementById('closing-song-title').value
+    };
+    
+    await saveMeetingField(data);
+    showSuccess('Songs saved!');
+}
+
+async function saveMeetingField(data) {
+    try {
+        const response = await fetch(`${API_URL}/meetings/${currentMeetingId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        
+        if (!response.ok) throw new Error('Failed to save');
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to save');
+    }
+}
+
+async function saveBasicAssignment(slotKey, personId) {
+    try {
+        const response = await fetch(`${API_URL}/meetings/${currentMeetingId}/assignments`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slot_key: slotKey, person_id: personId || null })
+        });
+        
+        if (!response.ok) throw new Error('Failed to save assignment');
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to save assignment');
+    }
+}
+
+async function saveKgPart(partNo) {
+    const title = document.getElementById('kg1-title').value;
+    const speaker = document.getElementById('kg1-speaker').value;
+    
+    await saveMeetingField({ kayamanan_title: title });
+    await saveBasicAssignment('kayamanan', speaker);
+}
+
+// ============= MM ROWS =============
+
+let mmRowsData = [];
+
+function displayMMRows(rows) {
+    mmRowsData = rows;
+    const container = document.getElementById('mm-rows-container');
+    
+    container.innerHTML = rows.map((row, idx) => `
+        <div class="mm-row" data-row-id="${row.id || 0}">
+            <div class="row-header">
+                <strong>Part ${idx + 1}</strong>
+                <button class="btn btn-danger" onclick="deleteMMRow(${row.id || 0}, ${idx})">Delete</button>
+            </div>
+            <div class="row-inputs">
+                <input type="text" placeholder="No." value="${h(row.part_no || '')}" onblur="updateMMRow(${idx})">
+                <input type="text" placeholder="Part title" value="${h(row.part_title || '')}" onblur="updateMMRow(${idx})">
+            </div>
+            <div class="row-selects">
+                <select onchange="updateMMRow(${idx})">
+                    <option value="">Publisher...</option>
+                    ${people.map(p => `<option value="${p.id}" ${p.id == row.publisher_id ? 'selected' : ''}>${h(p.full_name)}</option>`).join('')}
+                </select>
+                <select onchange="updateMMRow(${idx})">
+                    <option value="">Householder...</option>
+                    ${people.map(p => `<option value="${p.id}" ${p.id == row.householder_id ? 'selected' : ''}>${h(p.full_name)}</option>`).join('')}
+                </select>
             </div>
         </div>
     `).join('');
 }
 
-async function handleAddMeeting(e) {
-    e.preventDefault();
-    
-    const date = document.getElementById('meetingDate').value;
-    const type = document.getElementById('meetingType').value;
-    const theme = document.getElementById('meetingTheme').value;
-    const notes = document.getElementById('meetingNotes').value;
-    
+async function addMMRow() {
     try {
-        const response = await fetch(`${API_URL}/meetings`, {
+        const response = await fetch(`${API_URL}/meetings/${currentMeetingId}/mm-rows`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ date, type, theme, notes })
+            body: JSON.stringify({ part_no: '', part_title: '', publisher_id: null, householder_id: null })
         });
         
-        if (!response.ok) throw new Error('Failed to create meeting');
+        if (!response.ok) throw new Error('Failed to add row');
         
-        showSuccess('Meeting created successfully!');
-        document.getElementById('addMeetingForm').reset();
-        await loadAllData();
+        await loadMeetingDetails(currentMeetingId);
     } catch (error) {
-        console.error('Error creating meeting:', error);
-        showError('form', 'Failed to create meeting');
+        console.error('Error:', error);
     }
 }
 
-async function deleteMeeting(id) {
-    if (!confirm('Are you sure you want to delete this meeting? All assignments for this meeting will also be deleted.')) return;
+async function updateMMRow(idx) {
+    const row = document.querySelectorAll('.mm-row')[idx];
+    if (!row) return;
+    
+    const inputs = row.querySelectorAll('input');
+    const selects = row.querySelectorAll('select');
+    const rowId = mmRowsData[idx]?.id;
+    
+    if (!rowId) return;
+    
+    const data = {
+        part_no: inputs[0].value,
+        part_title: inputs[1].value,
+        publisher_id: selects[0].value || null,
+        householder_id: selects[1].value || null
+    };
     
     try {
-        const response = await fetch(`${API_URL}/meetings/${id}`, {
-            method: 'DELETE'
+        await fetch(`${API_URL}/mm-rows/${rowId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
         });
-        
-        if (!response.ok) throw new Error('Failed to delete meeting');
-        
-        showSuccess('Meeting deleted successfully!');
-        await loadAllData();
     } catch (error) {
-        console.error('Error deleting meeting:', error);
-        showError('list', 'Failed to delete meeting');
+        console.error('Error:', error);
     }
 }
 
-// ============= ASSIGNMENTS =============
-
-async function loadAssignments() {
-    try {
-        const response = await fetch(`${API_URL}/assignments`);
-        if (!response.ok) throw new Error('Failed to load assignments');
-        
-        assignments = await response.json();
-        displayAssignments();
-    } catch (error) {
-        console.error('Error loading assignments:', error);
-        showError('assignments', 'Failed to load assignments');
-    }
-}
-
-function displayAssignments() {
-    const container = document.getElementById('assignmentsList');
-    
-    if (assignments.length === 0) {
-        container.innerHTML = '<div class="empty-state">No assignments created yet. Create your first assignment above!</div>';
+async function deleteMMRow(rowId, idx) {
+    if (!rowId) {
+        mmRowsData.splice(idx, 1);
+        displayMMRows(mmRowsData);
         return;
     }
     
-    container.innerHTML = assignments.map(assignment => {
-        const meeting = meetings.find(m => m.id === assignment.meeting_id);
-        const member = members.find(m => m.id === assignment.member_id);
-        
-        return `
-            <div class="assignment-item">
-                <div class="assignment-header">
-                    <div>
-                        <div class="assignment-part">${escapeHtml(assignment.part)}</div>
-                        <div class="assignment-member">👤 ${member ? escapeHtml(member.name) : 'Unknown Member'}</div>
-                        <div class="assignment-date">📅 ${meeting ? formatDate(meeting.date) + ' - ' + meeting.type : 'Unknown Meeting'}</div>
-                    </div>
-                </div>
-                ${assignment.details ? `<div style="margin-top: 10px; color: #666;">${escapeHtml(assignment.details)}</div>` : ''}
-                <div class="member-actions" style="margin-top: 15px;">
-                    <button class="btn btn-delete" onclick="deleteAssignment(${assignment.id})">Delete</button>
-                </div>
-            </div>
-        `;
-    }).join('');
+    try {
+        await fetch(`${API_URL}/mm-rows/${rowId}`, { method: 'DELETE' });
+        await loadMeetingDetails(currentMeetingId);
+    } catch (error) {
+        console.error('Error:', error);
+    }
 }
 
-async function handleAddAssignment(e) {
-    e.preventDefault();
+// ============= PBK ROWS =============
+
+let pbkRowsData = [];
+
+function displayPBKRows(rows) {
+    pbkRowsData = rows;
+    const container = document.getElementById('pbk-rows-container');
     
-    const meeting_id = document.getElementById('assignmentMeeting').value;
-    const member_id = document.getElementById('assignmentMember').value;
-    const part = document.getElementById('assignmentPart').value;
-    const details = document.getElementById('assignmentDetails').value;
-    
+    container.innerHTML = rows.map((row, idx) => `
+        <div class="pbk-row" data-row-id="${row.id || 0}">
+            <div class="row-header">
+                <strong>Part ${idx + 1}</strong>
+                <button class="btn btn-danger" onclick="deletePBKRow(${row.id || 0}, ${idx})">Delete</button>
+            </div>
+            <div class="row-inputs">
+                <input type="text" placeholder="No." value="${h(row.part_no || '')}" onblur="updatePBKRow(${idx})">
+                <input type="text" placeholder="Part title" value="${h(row.part_title || '')}" onblur="updatePBKRow(${idx})">
+            </div>
+            <div class="row-selects single">
+                <select onchange="updatePBKRow(${idx})">
+                    <option value="">Speaker...</option>
+                    ${people.map(p => `<option value="${p.id}" ${p.id == row.speaker_id ? 'selected' : ''}>${h(p.full_name)}</option>`).join('')}
+                </select>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function addPBKRow() {
     try {
-        const response = await fetch(`${API_URL}/assignments`, {
+        const response = await fetch(`${API_URL}/meetings/${currentMeetingId}/pbk-rows`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ meeting_id, member_id, part, details })
+            body: JSON.stringify({ part_no: '', part_title: '', speaker_id: null })
         });
         
-        if (!response.ok) throw new Error('Failed to create assignment');
+        if (!response.ok) throw new Error('Failed to add row');
         
-        showSuccess('Assignment created successfully!');
-        document.getElementById('addAssignmentForm').reset();
-        await loadAllData();
+        await loadMeetingDetails(currentMeetingId);
     } catch (error) {
-        console.error('Error creating assignment:', error);
-        showError('form', 'Failed to create assignment');
+        console.error('Error:', error);
     }
 }
 
-async function deleteAssignment(id) {
-    if (!confirm('Are you sure you want to delete this assignment?')) return;
+async function updatePBKRow(idx) {
+    const row = document.querySelectorAll('.pbk-row')[idx];
+    if (!row) return;
+    
+    const inputs = row.querySelectorAll('input');
+    const select = row.querySelector('select');
+    const rowId = pbkRowsData[idx]?.id;
+    
+    if (!rowId) return;
+    
+    const data = {
+        part_no: inputs[0].value,
+        part_title: inputs[1].value,
+        speaker_id: select.value || null
+    };
     
     try {
-        const response = await fetch(`${API_URL}/assignments/${id}`, {
-            method: 'DELETE'
+        await fetch(`${API_URL}/pbk-rows/${rowId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
         });
-        
-        if (!response.ok) throw new Error('Failed to delete assignment');
-        
-        showSuccess('Assignment deleted successfully!');
-        await loadAllData();
     } catch (error) {
-        console.error('Error deleting assignment:', error);
-        showError('list', 'Failed to delete assignment');
+        console.error('Error:', error);
     }
 }
 
-function filterAssignments() {
-    const meetingFilter = document.getElementById('filterMeeting').value;
-    const memberFilter = document.getElementById('filterMember').value;
-    
-    let filtered = [...assignments];
-    
-    if (meetingFilter) {
-        filtered = filtered.filter(a => a.meeting_id == meetingFilter);
-    }
-    
-    if (memberFilter) {
-        filtered = filtered.filter(a => a.member_id == memberFilter);
-    }
-    
-    // Display filtered assignments (similar to displayAssignments but with filtered data)
-    const container = document.getElementById('assignmentsList');
-    
-    if (filtered.length === 0) {
-        container.innerHTML = '<div class="empty-state">No assignments match the selected filters.</div>';
+async function deletePBKRow(rowId, idx) {
+    if (!rowId) {
+        pbkRowsData.splice(idx, 1);
+        displayPBKRows(pbkRowsData);
         return;
     }
     
-    container.innerHTML = filtered.map(assignment => {
-        const meeting = meetings.find(m => m.id === assignment.meeting_id);
-        const member = members.find(m => m.id === assignment.member_id);
-        
-        return `
-            <div class="assignment-item">
-                <div class="assignment-header">
-                    <div>
-                        <div class="assignment-part">${escapeHtml(assignment.part)}</div>
-                        <div class="assignment-member">👤 ${member ? escapeHtml(member.name) : 'Unknown Member'}</div>
-                        <div class="assignment-date">📅 ${meeting ? formatDate(meeting.date) + ' - ' + meeting.type : 'Unknown Meeting'}</div>
-                    </div>
-                </div>
-                ${assignment.details ? `<div style="margin-top: 10px; color: #666;">${escapeHtml(assignment.details)}</div>` : ''}
-                <div class="member-actions" style="margin-top: 15px;">
-                    <button class="btn btn-delete" onclick="deleteAssignment(${assignment.id})">Delete</button>
-                </div>
-            </div>
-        `;
-    }).join('');
-}
-
-// ============= DASHBOARD =============
-
-function updateDashboard() {
-    // Update stats
-    document.getElementById('totalMembers').textContent = members.length;
-    document.getElementById('totalAssignments').textContent = assignments.length;
-    
-    // Count upcoming meetings (future dates)
-    const today = new Date();
-    const upcomingCount = meetings.filter(m => new Date(m.date) >= today).length;
-    document.getElementById('upcomingMeetings').textContent = upcomingCount;
-    
-    // Display recent assignments (past 3 weeks)
-    displayRecentAssignments();
-}
-
-function displayRecentAssignments() {
-    const container = document.getElementById('recentAssignments');
-    
-    // Calculate date 3 weeks ago
-    const threeWeeksAgo = new Date();
-    threeWeeksAgo.setDate(threeWeeksAgo.getDate() - 21);
-    
-    // Filter assignments from past 3 weeks
-    const recentAssignments = assignments.filter(assignment => {
-        const meeting = meetings.find(m => m.id === assignment.meeting_id);
-        if (!meeting) return false;
-        const meetingDate = new Date(meeting.date);
-        return meetingDate >= threeWeeksAgo && meetingDate <= new Date();
-    });
-    
-    if (recentAssignments.length === 0) {
-        container.innerHTML = '<div class="empty-state">No assignments in the past 3 weeks.</div>';
-        return;
+    try {
+        await fetch(`${API_URL}/pbk-rows/${rowId}`, { method: 'DELETE' });
+        await loadMeetingDetails(currentMeetingId);
+    } catch (error) {
+        console.error('Error:', error);
     }
-    
-    // Group by week
-    const weeks = {};
-    recentAssignments.forEach(assignment => {
-        const meeting = meetings.find(m => m.id === assignment.meeting_id);
-        if (!meeting) return;
-        
-        const weekKey = getWeekKey(new Date(meeting.date));
-        if (!weeks[weekKey]) {
-            weeks[weekKey] = [];
-        }
-        weeks[weekKey].push({ assignment, meeting });
-    });
-    
-    container.innerHTML = Object.keys(weeks).sort().reverse().map(weekKey => {
-        const weekAssignments = weeks[weekKey];
-        return `
-            <div class="timeline-week">
-                <h4>${weekKey}</h4>
-                ${weekAssignments.map(({ assignment, meeting }) => {
-                    const member = members.find(m => m.id === assignment.member_id);
-                    return `
-                        <div class="assignment-item">
-                            <div class="assignment-part">${escapeHtml(assignment.part)}</div>
-                            <div class="assignment-member">👤 ${member ? escapeHtml(member.name) : 'Unknown'}</div>
-                            <div class="assignment-date">📅 ${formatDate(meeting.date)}</div>
-                        </div>
-                    `;
-                }).join('')}
-            </div>
-        `;
-    }).join('');
 }
 
-function getWeekKey(date) {
-    const weekStart = new Date(date);
-    weekStart.setDate(date.getDate() - date.getDay());
-    return `Week of ${formatDate(weekStart.toISOString().split('T')[0])}`;
+// ============= PRINT =============
+
+function printThursday() {
+    window.open(`/print?meeting_id=${currentMeetingId}`, '_blank');
 }
 
-// ============= REPORTS =============
-
-function setDefaultReportMonth() {
-    const today = new Date();
-    const monthString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
-    document.getElementById('reportMonth').value = monthString;
+function printAssignmentSlips() {
+    window.open(`/assignment-slips?meeting_id=${currentMeetingId}`, '_blank');
 }
 
-function generateReport() {
-    const monthInput = document.getElementById('reportMonth').value;
-    if (!monthInput) {
-        alert('Please select a month');
-        return;
+function backFromThursday() {
+    if (currentCycleId) {
+        viewCycle(currentCycleId);
+    } else {
+        showPage('midweek');
     }
-    
-    const [year, month] = monthInput.split('-');
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0);
-    
-    // Filter meetings and assignments for selected month
-    const monthMeetings = meetings.filter(m => {
-        const meetingDate = new Date(m.date);
-        return meetingDate >= startDate && meetingDate <= endDate;
-    });
-    
-    const monthAssignments = assignments.filter(a => {
-        const meeting = meetings.find(m => m.id === a.meeting_id);
-        if (!meeting) return false;
-        const meetingDate = new Date(meeting.date);
-        return meetingDate >= startDate && meetingDate <= endDate;
-    });
-    
-    // Display statistics
-    const statsContainer = document.getElementById('monthlyStats');
-    statsContainer.innerHTML = `
-        <div class="report-item">
-            <h4>${monthMeetings.length}</h4>
-            <p>Meetings</p>
-        </div>
-        <div class="report-item">
-            <h4>${monthAssignments.length}</h4>
-            <p>Assignments</p>
-        </div>
-        <div class="report-item">
-            <h4>${new Set(monthAssignments.map(a => a.member_id)).size}</h4>
-            <p>Members Participated</p>
-        </div>
-    `;
-    
-    // Display member participation
-    const participationContainer = document.getElementById('memberParticipation');
-    const memberCounts = {};
-    
-    monthAssignments.forEach(assignment => {
-        const memberId = assignment.member_id;
-        memberCounts[memberId] = (memberCounts[memberId] || 0) + 1;
-    });
-    
-    participationContainer.innerHTML = Object.keys(memberCounts).map(memberId => {
-        const member = members.find(m => m.id == memberId);
-        const count = memberCounts[memberId];
-        return `
-            <div class="assignment-item">
-                <div class="assignment-member">${member ? escapeHtml(member.name) : 'Unknown'}</div>
-                <div style="font-size: 1.2rem; font-weight: 600; color: #2c5aa0;">${count} assignment${count > 1 ? 's' : ''}</div>
-            </div>
-        `;
-    }).join('');
-}
-
-// ============= DROPDOWNS =============
-
-function populateDropdowns() {
-    // Populate meeting dropdowns
-    const meetingSelects = [
-        document.getElementById('assignmentMeeting'),
-        document.getElementById('filterMeeting')
-    ];
-    
-    meetingSelects.forEach(select => {
-        if (!select) return;
-        const isFilter = select.id === 'filterMeeting';
-        const currentValue = select.value;
-        
-        select.innerHTML = isFilter ? '<option value="">All Meetings</option>' : '<option value="">Choose a meeting</option>';
-        
-        meetings.sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(meeting => {
-            const option = document.createElement('option');
-            option.value = meeting.id;
-            option.textContent = `${formatDate(meeting.date)} - ${meeting.type}`;
-            select.appendChild(option);
-        });
-        
-        if (currentValue) select.value = currentValue;
-    });
-    
-    // Populate member dropdowns
-    const memberSelects = [
-        document.getElementById('assignmentMember'),
-        document.getElementById('filterMember')
-    ];
-    
-    memberSelects.forEach(select => {
-        if (!select) return;
-        const isFilter = select.id === 'filterMember';
-        const currentValue = select.value;
-        
-        select.innerHTML = isFilter ? '<option value="">All Members</option>' : '<option value="">Choose a member</option>';
-        
-        members.sort((a, b) => a.name.localeCompare(b.name)).forEach(member => {
-            const option = document.createElement('option');
-            option.value = member.id;
-            option.textContent = member.name;
-            select.appendChild(option);
-        });
-        
-        if (currentValue) select.value = currentValue;
-    });
 }
 
 // ============= UTILITIES =============
 
-function escapeHtml(text) {
-    if (!text) return '';
+function h(str) {
+    if (!str) return '';
     const div = document.createElement('div');
-    div.textContent = text;
+    div.textContent = str;
     return div.innerHTML;
 }
 
-function formatDate(dateString) {
-    const date = new Date(dateString);
+function formatDate(dateStr) {
+    const date = new Date(dateStr);
     return date.toLocaleDateString('en-US', { 
         year: 'numeric', 
         month: 'long', 
-        day: 'numeric' 
+        day: 'numeric',
+        weekday: 'short'
     });
 }
 
-function showSuccess(message) {
+function showSuccess(msg) {
     const div = document.createElement('div');
     div.className = 'success-message';
-    div.textContent = message;
+    div.textContent = msg;
     div.style.position = 'fixed';
     div.style.top = '80px';
     div.style.right = '20px';
@@ -656,10 +681,27 @@ function showSuccess(message) {
     div.style.minWidth = '300px';
     
     document.body.appendChild(div);
-    
     setTimeout(() => div.remove(), 3000);
 }
 
-function showError(context, message) {
-    console.error(`${context}: ${message}`);
-}
+// Make functions global
+window.showPeopleCategory = showPeopleCategory;
+window.showAddPersonModal = showAddPersonModal;
+window.closeAddPersonModal = closeAddPersonModal;
+window.deletePerson = deletePerson;
+window.viewCycle = viewCycle;
+window.deleteCycle = deleteCycle;
+window.editThursday = editThursday;
+window.saveWeekInfo = saveWeekInfo;
+window.saveSongs = saveSongs;
+window.saveBasicAssignment = saveBasicAssignment;
+window.saveKgPart = saveKgPart;
+window.addMMRow = addMMRow;
+window.updateMMRow = updateMMRow;
+window.deleteMMRow = deleteMMRow;
+window.addPBKRow = addPBKRow;
+window.updatePBKRow = updatePBKRow;
+window.deletePBKRow = deletePBKRow;
+window.printThursday = printThursday;
+window.printAssignmentSlips = printAssignmentSlips;
+window.backFromThursday = backFromThursday;
