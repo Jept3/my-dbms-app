@@ -1,0 +1,15 @@
+{
+  "name": "my-dbms-app",
+  "version": "1.0.0",
+  "description": "Simple DBMS application with Turso and Cloudflare",
+  "main": "index.html",
+  "scripts": {
+    "deploy": "wrangler pages deploy"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.14.0"
+  },
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}
