@@ -1,0 +1,8 @@
+name = "my-dbms-app"
+compatibility_date = "2024-01-01"
+pages_build_output_dir = "."
+
+[env.production.vars]
+# These will be set via Cloudflare dashboard
+# TURSO_DATABASE_URL = "your-database-url"
+# TURSO_AUTH_TOKEN = "your-auth-token"
