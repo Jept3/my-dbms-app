@@ -12,330 +12,297 @@
         <div class="nav-container">
             <div class="nav-brand">
                 <h1>📅 JW Schedule Meetings</h1>
+                <p class="subtitle">Rolling Hills Congregation</p>
             </div>
             <ul class="nav-menu">
-                <li><a href="#" class="nav-link active" data-page="dashboard">Dashboard</a></li>
-                <li><a href="#" class="nav-link" data-page="members">Members</a></li>
-                <li><a href="#" class="nav-link" data-page="meetings">Meetings</a></li>
+                <li><a href="#" class="nav-link" data-page="people">People</a></li>
+                <li><a href="#" class="nav-link active" data-page="midweek">Midweek</a></li>
                 <li><a href="#" class="nav-link" data-page="assignments">Assignments</a></li>
-                <li><a href="#" class="nav-link" data-page="reports">Monthly Report</a></li>
             </ul>
         </div>
     </nav>
 
-    <!-- Main Content -->
     <div class="container">
-        <!-- Page 1: Dashboard -->
-        <div id="dashboard-page" class="page active">
+        <!-- PEOPLE PAGE -->
+        <div id="people-page" class="page">
             <div class="page-header">
-                <h2>Dashboard</h2>
-                <p>Overview of recent assignments (Past 3 weeks)</p>
+                <h2>People Directory</h2>
+                <p>Manage congregation members</p>
             </div>
 
-            <div class="dashboard-grid">
-                <div class="stats-card">
-                    <div class="stats-icon">👥</div>
-                    <div class="stats-info">
-                        <h3 id="totalMembers">0</h3>
-                        <p>Total Members</p>
-                    </div>
+            <div class="people-categories">
+                <div class="category-card" onclick="showPeopleCategory('elders')">
+                    <div class="category-icon">👔</div>
+                    <h3>Congregation Elders</h3>
+                    <p class="count" id="count-elders">0</p>
                 </div>
-                <div class="stats-card">
-                    <div class="stats-icon">📋</div>
-                    <div class="stats-info">
-                        <h3 id="totalAssignments">0</h3>
-                        <p>Total Assignments</p>
-                    </div>
+                <div class="category-card" onclick="showPeopleCategory('ms')">
+                    <div class="category-icon">🎯</div>
+                    <h3>Ministerial Servants</h3>
+                    <p class="count" id="count-ms">0</p>
                 </div>
-                <div class="stats-card">
-                    <div class="stats-icon">📅</div>
-                    <div class="stats-info">
-                        <h3 id="upcomingMeetings">0</h3>
-                        <p>Upcoming Meetings</p>
-                    </div>
+                <div class="category-card" onclick="showPeopleCategory('publishers')">
+                    <div class="category-icon">📖</div>
+                    <h3>Publishers</h3>
+                    <p class="count" id="count-publishers">0</p>
+                </div>
+                <div class="category-card" onclick="showPeopleCategory('student-brothers')">
+                    <div class="category-icon">👨‍🎓</div>
+                    <h3>Student Brothers</h3>
+                    <p class="count" id="count-student-brothers">0</p>
+                </div>
+                <div class="category-card" onclick="showPeopleCategory('student-sisters')">
+                    <div class="category-icon">👩‍🎓</div>
+                    <h3>Student Sisters</h3>
+                    <p class="count" id="count-student-sisters">0</p>
+                </div>
+                <div class="category-card" onclick="showPeopleCategory('attendants')">
+                    <div class="category-icon">🔧</div>
+                    <h3>Attendant Brothers</h3>
+                    <p class="count" id="count-attendants">0</p>
                 </div>
             </div>
 
-            <div class="card">
-                <h3>Recent Assignments (Past 3 Weeks)</h3>
-                <div id="recentAssignments" class="assignments-timeline">
-                    <div class="loading">Loading recent assignments...</div>
+            <div class="card" id="category-detail" style="display:none;">
+                <div class="card-header">
+                    <h3 id="category-title">Members</h3>
+                    <button class="btn btn-primary" onclick="showAddPersonModal()">➕ Add Person</button>
                 </div>
+                <div id="people-list"></div>
             </div>
         </div>
 
-        <!-- Page 2: Members -->
-        <div id="members-page" class="page">
+        <!-- MIDWEEK PAGE -->
+        <div id="midweek-page" class="page active">
             <div class="page-header">
-                <h2>Members Management</h2>
-                <p>Add and manage congregation members and their qualifications</p>
+                <h2>Midweek Meeting Schedule</h2>
+                <p>Create 3-month cycles and manage Thursday meetings</p>
             </div>
 
             <div class="card">
-                <h3>➕ Add New Member</h3>
-                <form id="addMemberForm">
+                <div class="card-header">
+                    <h3>Create 3-Month Cycle</h3>
+                </div>
+                <form id="create-cycle-form">
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="memberName">Full Name *</label>
-                            <input type="text" id="memberName" required placeholder="Enter full name">
+                            <label>Cycle Title</label>
+                            <input type="text" id="cycle-title" required placeholder="e.g., Jan-Mar 2026">
                         </div>
                         <div class="form-group">
-                            <label for="memberGender">Gender *</label>
-                            <select id="memberGender" required>
-                                <option value="">Select Gender</option>
-                                <option value="Brother">Brother</option>
-                                <option value="Sister">Sister</option>
-                            </select>
+                            <label>Start Date (Monday)</label>
+                            <input type="date" id="cycle-start" required>
+                        </div>
+                        <div class="form-group">
+                            <label>End Date (Sunday)</label>
+                            <input type="date" id="cycle-end" required>
                         </div>
                     </div>
-
-                    <div class="form-group">
-                        <label>Qualifications / Roles</label>
-                        <div class="checkbox-grid">
-                            <label class="checkbox-label">
-                                <input type="checkbox" name="roles" value="Elder"> Elder
-                            </label>
-                            <label class="checkbox-label">
-                                <input type="checkbox" name="roles" value="MS"> Ministerial Servant (MS)
-                            </label>
-                            <label class="checkbox-label">
-                                <input type="checkbox" name="roles" value="Bible Reading"> Bible Reading
-                            </label>
-                            <label class="checkbox-label">
-                                <input type="checkbox" name="roles" value="Student Talk"> Student Talk
-                            </label>
-                            <label class="checkbox-label">
-                                <input type="checkbox" name="roles" value="Paragraph Reader"> Paragraph Reader
-                            </label>
-                            <label class="checkbox-label">
-                                <input type="checkbox" name="roles" value="Bible Text Reader"> Bible Text Reader
-                            </label>
-                            <label class="checkbox-label">
-                                <input type="checkbox" name="roles" value="Prayer Opening"> Prayer (Opening)
-                            </label>
-                            <label class="checkbox-label">
-                                <input type="checkbox" name="roles" value="Prayer Closing"> Prayer (Closing)
-                            </label>
-                            <label class="checkbox-label">
-                                <input type="checkbox" name="roles" value="Microphone Servant"> Microphone Servant
-                            </label>
-                            <label class="checkbox-label">
-                                <input type="checkbox" name="roles" value="Podium Servant"> Podium Servant
-                            </label>
-                            <label class="checkbox-label">
-                                <input type="checkbox" name="roles" value="Gate Keeper"> Gate Keeper
-                            </label>
-                            <label class="checkbox-label">
-                                <input type="checkbox" name="roles" value="Audio Servant"> Audio Servant
-                            </label>
-                            <label class="checkbox-label">
-                                <input type="checkbox" name="roles" value="Video Servant"> Video Servant
-                            </label>
-                        </div>
-                    </div>
-
-                    <button type="submit" class="btn btn-primary">Add Member</button>
+                    <button type="submit" class="btn btn-primary">Create Cycle & Generate Thursdays</button>
                 </form>
             </div>
 
             <div class="card">
-                <h3>👥 All Members</h3>
-                <div id="membersList">
-                    <div class="loading">Loading members...</div>
-                </div>
+                <h3>Schedule Cycles</h3>
+                <div id="cycles-list"></div>
             </div>
         </div>
 
-        <!-- Page 3: Meetings -->
-        <div id="meetings-page" class="page">
+        <!-- VIEW CYCLE PAGE (Dynamic) -->
+        <div id="view-cycle-page" class="page">
             <div class="page-header">
-                <h2>Meeting Schedules</h2>
-                <p>Create and manage meeting schedules based on jw.org</p>
+                <button class="btn" onclick="showPage('midweek')">← Back to Midweek</button>
+                <h2 id="cycle-detail-title">Cycle Details</h2>
+                <p id="cycle-detail-dates"></p>
             </div>
 
             <div class="card">
-                <h3>➕ Create New Meeting Schedule</h3>
-                <form id="addMeetingForm">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="meetingDate">Meeting Date *</label>
-                            <input type="date" id="meetingDate" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="meetingType">Meeting Type *</label>
-                            <select id="meetingType" required>
-                                <option value="">Select Type</option>
-                                <option value="Midweek">Midweek Meeting</option>
-                                <option value="Weekend">Weekend Meeting</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="meetingTheme">Meeting Theme / Title</label>
-                        <input type="text" id="meetingTheme" placeholder="e.g., 'Be Peaceable With Everyone'">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="meetingNotes">Notes / Special Instructions</label>
-                        <textarea id="meetingNotes" rows="3" placeholder="Any special notes for this meeting"></textarea>
-                    </div>
-
-                    <button type="submit" class="btn btn-primary">Create Meeting</button>
-                </form>
-            </div>
-
-            <div class="card">
-                <h3>📅 Scheduled Meetings</h3>
-                <div id="meetingsList">
-                    <div class="loading">Loading meetings...</div>
-                </div>
+                <h3>Thursdays</h3>
+                <div id="thursdays-list"></div>
             </div>
         </div>
 
-        <!-- Page 4: Assignments -->
-        <div id="assignments-page" class="page">
+        <!-- EDIT THURSDAY PAGE (Dynamic) -->
+        <div id="edit-thursday-page" class="page">
             <div class="page-header">
-                <h2>Assignment Management</h2>
-                <p>Assign members to specific meeting parts</p>
+                <button class="btn" onclick="backFromThursday()">← Back</button>
+                <h2 id="thursday-title">Edit Thursday Meeting</h2>
+                <p id="thursday-date"></p>
             </div>
 
+            <div class="toolbar-actions">
+                <button class="btn btn-secondary" onclick="printThursday()">🖨️ Print Schedule</button>
+                <button class="btn btn-secondary" onclick="printAssignmentSlips()">📄 Print Assignment Slips</button>
+            </div>
+
+            <!-- Week Info -->
             <div class="card">
-                <h3>➕ Create Assignment</h3>
-                <form id="addAssignmentForm">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="assignmentMeeting">Select Meeting *</label>
-                            <select id="assignmentMeeting" required>
-                                <option value="">Choose a meeting</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="assignmentMember">Assign Member *</label>
-                            <select id="assignmentMember" required>
-                                <option value="">Choose a member</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="assignmentPart">Meeting Part *</label>
-                        <select id="assignmentPart" required>
-                            <option value="">Select Part</option>
-                            <option value="Chairman">Chairman</option>
-                            <option value="Prayer Opening">Prayer (Opening)</option>
-                            <option value="Prayer Closing">Prayer (Closing)</option>
-                            <option value="Bible Reading">Bible Reading</option>
-                            <option value="Student Talk 1">Student Talk #1</option>
-                            <option value="Student Talk 2">Student Talk #2</option>
-                            <option value="Student Talk 3">Student Talk #3</option>
-                            <option value="Initial Call">Initial Call</option>
-                            <option value="Return Visit">Return Visit</option>
-                            <option value="Bible Study">Bible Study</option>
-                            <option value="Talk">Talk</option>
-                            <option value="Paragraph Reader">Paragraph Reader</option>
-                            <option value="Bible Text Reader">Bible Text Reader</option>
-                            <option value="Microphone">Microphone Servant</option>
-                            <option value="Podium">Podium Servant</option>
-                            <option value="Gate">Gate Keeper</option>
-                            <option value="Audio">Audio Servant</option>
-                            <option value="Video">Video Servant</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="assignmentDetails">Assignment Details</label>
-                        <textarea id="assignmentDetails" rows="2" placeholder="Additional details (optional)"></textarea>
-                    </div>
-
-                    <button type="submit" class="btn btn-primary">Create Assignment</button>
-                </form>
-            </div>
-
-            <div class="card">
-                <h3>📋 All Assignments</h3>
-                <div class="filter-group">
-                    <select id="filterMeeting">
-                        <option value="">All Meetings</option>
-                    </select>
-                    <select id="filterMember">
-                        <option value="">All Members</option>
-                    </select>
-                </div>
-                <div id="assignmentsList">
-                    <div class="loading">Loading assignments...</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Page 5: Monthly Report -->
-        <div id="reports-page" class="page">
-            <div class="page-header">
-                <h2>Monthly Report</h2>
-                <p>Overview and statistics (Class card to be developed)</p>
-            </div>
-
-            <div class="card">
-                <h3>Select Month</h3>
+                <h3>Week Information</h3>
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="reportMonth">Month</label>
-                        <input type="month" id="reportMonth">
+                        <label>Week Title</label>
+                        <input type="text" id="week-title" placeholder="e.g., Be Peaceable With Everyone">
                     </div>
-                    <button onclick="generateReport()" class="btn btn-primary">Generate Report</button>
+                    <div class="form-group">
+                        <label>Week Reading</label>
+                        <input type="text" id="week-reading" placeholder="e.g., SALMO 1-6">
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="saveWeekInfo()">Save Week Info</button>
+            </div>
+
+            <!-- Songs -->
+            <div class="card">
+                <h3>Songs</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Opening Song No.</label>
+                        <input type="text" id="opening-song-no" placeholder="e.g., 119">
+                    </div>
+                    <div class="form-group">
+                        <label>Opening Song Title</label>
+                        <input type="text" id="opening-song-title" placeholder="Song title">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Middle Song No.</label>
+                        <input type="text" id="middle-song-no" placeholder="e.g., 32">
+                    </div>
+                    <div class="form-group">
+                        <label>Middle Song Title</label>
+                        <input type="text" id="middle-song-title" placeholder="Song title">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Closing Song No.</label>
+                        <input type="text" id="closing-song-no" placeholder="e.g., 41">
+                    </div>
+                    <div class="form-group">
+                        <label>Closing Song Title</label>
+                        <input type="text" id="closing-song-title" placeholder="Song title">
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="saveSongs()">Save Songs</button>
+            </div>
+
+            <!-- Basic Assignments -->
+            <div class="card">
+                <h3>Basic Assignments</h3>
+                <div class="assignment-row">
+                    <label>Chairman</label>
+                    <select id="chairman-select" onchange="saveBasicAssignment('chairman', this.value)">
+                        <option value="">Select person...</option>
+                    </select>
+                </div>
+                <div class="assignment-row">
+                    <label>Opening Prayer</label>
+                    <select id="opening-prayer-select" onchange="saveBasicAssignment('opening_prayer', this.value)">
+                        <option value="">Select person...</option>
+                    </select>
+                </div>
+                <div class="assignment-row">
+                    <label>Closing Prayer</label>
+                    <select id="closing-prayer-select" onchange="saveBasicAssignment('closing_prayer', this.value)">
+                        <option value="">Select person...</option>
+                    </select>
                 </div>
             </div>
 
-            <div id="reportContent">
-                <div class="card">
-                    <h3>📊 Monthly Statistics</h3>
-                    <div class="report-grid" id="monthlyStats">
-                        <p class="text-muted">Select a month and click "Generate Report"</p>
+            <!-- KAYAMANAN Section -->
+            <div class="card section-kg">
+                <h3>💎 KAYAMANAN MULA SA SALITA NG DIYOS</h3>
+                
+                <div class="assignment-row">
+                    <label>1. <input type="text" id="kg1-title" placeholder="Part title" style="width:300px" onblur="saveKgPart(1)"></label>
+                    <select id="kg1-speaker" onchange="saveKgPart(1)">
+                        <option value="">Select speaker...</option>
+                    </select>
+                </div>
+                
+                <div class="assignment-row">
+                    <label>2. Espirituwal na Hiyas (fixed)</label>
+                    <select id="kg2-speaker" onchange="saveBasicAssignment('hiyas', this.value)">
+                        <option value="">Select speaker...</option>
+                    </select>
+                </div>
+                
+                <div class="assignment-row">
+                    <label>3. Pagbabasa ng Bibliya</label>
+                    <select id="kg3-reader" onchange="saveBasicAssignment('bible_reading', this.value)">
+                        <option value="">Select reader...</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- MAGING MAHUSAY Section -->
+            <div class="card section-mm">
+                <h3>📚 MAGING MAHUSAY SA MINISTERYO</h3>
+                <div id="mm-rows-container"></div>
+                <button class="btn btn-secondary" onclick="addMMRow()">➕ Add Ministry Part</button>
+            </div>
+
+            <!-- PAMUMUHAY Section -->
+            <div class="card section-pbk">
+                <h3>❤️ PAMUMUHAY BILANG KRISTIYANO</h3>
+                <div id="pbk-rows-container"></div>
+                <button class="btn btn-secondary" onclick="addPBKRow()">➕ Add PBK Part</button>
+                
+                <div style="margin-top:20px; padding-top:20px; border-top:1px solid #ddd;">
+                    <div class="assignment-row">
+                        <label>CBS Reader (Paragraph)</label>
+                        <select id="cbs-reader-phar" onchange="saveBasicAssignment('cbs_reader_phar', this.value)">
+                            <option value="">Select reader...</option>
+                        </select>
+                    </div>
+                    <div class="assignment-row">
+                        <label>CBS Reader (Bible)</label>
+                        <select id="cbs-reader-bible" onchange="saveBasicAssignment('cbs_reader_bible', this.value)">
+                            <option value="">Select reader...</option>
+                        </select>
                     </div>
                 </div>
+            </div>
+        </div>
 
-                <div class="card">
-                    <h3>📋 Member Participation</h3>
-                    <div id="memberParticipation">
-                        <p class="text-muted">Report data will appear here</p>
-                    </div>
-                </div>
+        <!-- ASSIGNMENTS OVERVIEW PAGE -->
+        <div id="assignments-page" class="page">
+            <div class="page-header">
+                <h2>Assignments Overview</h2>
+                <p>Choose a schedule cycle to view its Thursdays and assignments</p>
+            </div>
 
-                <div class="card">
-                    <h3>📝 Class Card (To Be Developed)</h3>
-                    <p class="text-muted">Class card functionality will be added in future updates</p>
-                </div>
+            <div class="card">
+                <h3>Schedule Cycles</h3>
+                <div id="assignments-cycles-list"></div>
             </div>
         </div>
     </div>
 
-    <!-- Edit Member Modal -->
-    <div id="editMemberModal" class="modal">
+    <!-- Add Person Modal -->
+    <div id="add-person-modal" class="modal">
         <div class="modal-content">
-            <span class="close" onclick="closeEditMemberModal()">&times;</span>
-            <h2>✏️ Edit Member</h2>
-            <form id="editMemberForm">
-                <input type="hidden" id="editMemberId">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="editMemberName">Full Name *</label>
-                        <input type="text" id="editMemberName" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="editMemberGender">Gender *</label>
-                        <select id="editMemberGender" required>
-                            <option value="Brother">Brother</option>
-                            <option value="Sister">Sister</option>
-                        </select>
-                    </div>
+            <span class="close" onclick="closeAddPersonModal()">&times;</span>
+            <h2>Add New Person</h2>
+            <form id="add-person-form">
+                <div class="form-group">
+                    <label>Full Name *</label>
+                    <input type="text" id="person-name" required>
                 </div>
                 <div class="form-group">
-                    <label>Qualifications / Roles</label>
-                    <div class="checkbox-grid" id="editRolesContainer">
-                        <!-- Checkboxes will be populated dynamically -->
-                    </div>
+                    <label>Category *</label>
+                    <select id="person-category" required>
+                        <option value="">Select category...</option>
+                        <option value="elder">Congregation Elder</option>
+                        <option value="ms">Ministerial Servant</option>
+                        <option value="publisher">Publisher</option>
+                        <option value="student-brother">Student Brother</option>
+                        <option value="student-sister">Student Sister</option>
+                        <option value="attendant">Attendant Brother</option>
+                    </select>
                 </div>
-                <button type="submit" class="btn btn-primary">Update Member</button>
+                <button type="submit" class="btn btn-primary">Add Person</button>
             </form>
         </div>
     </div>
