@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home - JW Schedule Meetings</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <h1>📅 JW Schedule Meetings</h1>
+                <p class="subtitle">Rolling Hills Congregation</p>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="index.html" class="nav-link active">Home</a></li>
+                <li><a href="people.html" class="nav-link">People</a></li>
+                <li><a href="midweek.html" class="nav-link">Midweek</a></li>
+                <li><a href="assignments.html" class="nav-link">Assignments</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h2>Welcome to JW Schedule Meetings</h2>
+            <p>Manage your congregation's meeting schedules efficiently</p>
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="stats-card">
+                <div class="stats-icon">👥</div>
+                <div class="stats-info">
+                    <h3 id="totalMembers">0</h3>
+                    <p>Total Members</p>
+                </div>
+            </div>
+            <div class="stats-card">
+                <div class="stats-icon">📅</div>
+                <div class="stats-info">
+                    <h3 id="totalCycles">0</h3>
+                    <p>Schedule Cycles</p>
+                </div>
+            </div>
+            <div class="stats-card">
+                <div class="stats-icon">📋</div>
+                <div class="stats-info">
+                    <h3 id="totalMeetings">0</h3>
+                    <p>Total Meetings</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Quick Actions</h3>
+            <div class="quick-actions">
+                <a href="people.html" class="action-card">
+                    <div class="action-icon">👥</div>
+                    <h4>Manage People</h4>
+                    <p>Add elders, MS, publishers, and students</p>
+                </a>
+                <a href="midweek.html" class="action-card">
+                    <div class="action-icon">📅</div>
+                    <h4>Create Cycle</h4>
+                    <p>Generate 3-month schedule with Thursdays</p>
+                </a>
+                <a href="assignments.html" class="action-card">
+                    <div class="action-icon">✏️</div>
+                    <h4>View Assignments</h4>
+                    <p>See all cycles and meeting assignments</p>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/shared.js"></script>
+    <script>
+        // Load dashboard stats
+        async function loadStats() {
+            try {
+                const [people, cycles] = await Promise.all([
+                    fetch(API_URL + '/people').then(r => r.json()),
+                    fetch(API_URL + '/cycles').then(r => r.json())
+                ]);
+                
+                document.getElementById('totalMembers').textContent = people.length;
+                document.getElementById('totalCycles').textContent = cycles.length;
+                
+                // Count total meetings
+                let totalMeetings = 0;
+                for (const cycle of cycles) {
+                    const meetings = await fetch(`${API_URL}/cycles/${cycle.id}/meetings`).then(r => r.json());
+                    totalMeetings += meetings.length;
+                }
+                document.getElementById('totalMeetings').textContent = totalMeetings;
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+        
+        loadStats();
+    </script>
+</body>
+</html>

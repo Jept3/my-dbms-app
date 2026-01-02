@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Midweek - JW Schedule Meetings</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <h1>📅 JW Schedule Meetings</h1>
+                <p class="subtitle">Rolling Hills Congregation</p>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="index.html" class="nav-link">Home</a></li>
+                <li><a href="people.html" class="nav-link">People</a></li>
+                <li><a href="midweek.html" class="nav-link active">Midweek</a></li>
+                <li><a href="assignments.html" class="nav-link">Assignments</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h2>Midweek Meeting Schedule</h2>
+            <p>Create 3-month cycles and manage Thursday meetings</p>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>Create 3-Month Cycle</h3>
+            </div>
+            <form id="create-cycle-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Cycle Title</label>
+                        <input type="text" id="cycle-title" required placeholder="e.g., Jan-Mar 2026">
+                    </div>
+                    <div class="form-group">
+                        <label>Start Date (Monday)</label>
+                        <input type="date" id="cycle-start" required>
+                    </div>
+                    <div class="form-group">
+                        <label>End Date (Sunday)</label>
+                        <input type="date" id="cycle-end" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">Create Cycle & Generate Thursdays</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h3>Schedule Cycles</h3>
+            <div id="cycles-list"></div>
+        </div>
+    </div>
+
+    <script src="js/shared.js"></script>
+    <script src="js/midweek.js"></script>
+</body>
+</html>

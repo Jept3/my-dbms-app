@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>People - JW Schedule Meetings</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <h1>📅 JW Schedule Meetings</h1>
+                <p class="subtitle">Rolling Hills Congregation</p>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="index.html" class="nav-link">Home</a></li>
+                <li><a href="people.html" class="nav-link active">People</a></li>
+                <li><a href="midweek.html" class="nav-link">Midweek</a></li>
+                <li><a href="assignments.html" class="nav-link">Assignments</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h2>People Directory</h2>
+            <p>Manage congregation members</p>
+        </div>
+
+        <div class="people-categories">
+            <div class="category-card" onclick="showCategory('elders')">
+                <div class="category-icon">👔</div>
+                <h3>Congregation Elders</h3>
+                <p class="count" id="count-elders">0</p>
+            </div>
+            <div class="category-card" onclick="showCategory('ms')">
+                <div class="category-icon">🎯</div>
+                <h3>Ministerial Servants</h3>
+                <p class="count" id="count-ms">0</p>
+            </div>
+            <div class="category-card" onclick="showCategory('publishers')">
+                <div class="category-icon">📖</div>
+                <h3>Publishers</h3>
+                <p class="count" id="count-publishers">0</p>
+            </div>
+            <div class="category-card" onclick="showCategory('student-brothers')">
+                <div class="category-icon">👨‍🎓</div>
+                <h3>Student Brothers</h3>
+                <p class="count" id="count-student-brothers">0</p>
+            </div>
+            <div class="category-card" onclick="showCategory('student-sisters')">
+                <div class="category-icon">👩‍🎓</div>
+                <h3>Student Sisters</h3>
+                <p class="count" id="count-student-sisters">0</p>
+            </div>
+            <div class="category-card" onclick="showCategory('attendants')">
+                <div class="category-icon">🔧</div>
+                <h3>Attendant Brothers</h3>
+                <p class="count" id="count-attendants">0</p>
+            </div>
+        </div>
+
+        <div class="card" id="category-detail" style="display:none;">
+            <div class="card-header">
+                <h3 id="category-title">Members</h3>
+                <button class="btn btn-primary" onclick="showAddModal()">➕ Add Person</button>
+            </div>
+            <div id="people-list"></div>
+        </div>
+    </div>
+
+    <!-- Add Person Modal -->
+    <div id="add-person-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeAddModal()">&times;</span>
+            <h2>Add New Person</h2>
+            <form id="add-person-form">
+                <div class="form-group">
+                    <label>Full Name *</label>
+                    <input type="text" id="person-name" required>
+                </div>
+                <div class="form-group">
+                    <label>Category *</label>
+                    <select id="person-category" required>
+                        <option value="">Select category...</option>
+                        <option value="elder">Congregation Elder</option>
+                        <option value="ms">Ministerial Servant</option>
+                        <option value="publisher">Publisher</option>
+                        <option value="student-brother">Student Brother</option>
+                        <option value="student-sister">Student Sister</option>
+                        <option value="attendant">Attendant Brother</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">Add Person</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/shared.js"></script>
+    <script src="js/people.js"></script>
+</body>
+</html>
